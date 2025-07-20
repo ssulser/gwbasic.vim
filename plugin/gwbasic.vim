@@ -1,107 +1,154 @@
-augroup gwbasic_plugin
-  autocmd!
-  autocmd FileType gwbasic call GWBASIC_Setup()
-augroup END
+" GW-BASIC Plugin für Vim
 
-function! GWBASIC_Setup()
-  setlocal expandtab
-  setlocal tabstop=4
-  setlocal shiftwidth=4
-  setlocal softtabstop=4
+if exists("g:loaded_gwbasic")
+  finish
+endif
+let g:loaded_gwbasic = 1
 
-  inoremap <buffer> <CR> <C-o>:call GWBASIC_InsertNextLine()<CR>
-  inoremap <buffer> <C-CR> <CR>
-  inoremap <buffer> <C-j> <CR>
-  nnoremap <buffer> <C-r> :Run<CR>
+" Automatische Zeilennummern bei <CR>
+autocmd FileType gwbasic inoremap <buffer> <CR> <C-o>:call GWBASIC_NewLine()<CR>
 
-  command! -nargs=? Renumber call GWBASIC_Renumber(<f-args>)
-  command! Run call GWBASIC_Run()
-  command! ResolveLabels call GWBASIC_ResolveLabels()
-endfunction
+" Leere Zeile bei <C-j> (statt <C-CR>)
+autocmd FileType gwbasic inoremap <buffer> <C-j> <CR>
 
-function! GWBASIC_InsertNextLine()
-  let l:line = getline('.')
-  let l:match = matchlist(l:line, '^\s*\(\d\+\)\s\+')
-  if len(l:match) >= 2
-    let l:num = str2nr(l:match[1]) + 10
-    call append(line('.'), printf('%d ', l:num))
-    call cursor(line('.')+1, strlen(printf('%d ', l:num))+1)
-    startinsert
-  else
-    call append(line('.'), '')
-    call cursor(line('.')+1, 1)
-    startinsert
+" Ausführen mit <C-r>
+autocmd FileType gwbasic nnoremap <buffer> <C-r> :call GWBASIC_Run()<CR>
+
+define command! -nargs=? Renumber call GWBASIC_Renumber(<f-args>)
+command! ResolveLabels call GWBASIC_ResolveLabels()
+command! Run call GWBASIC_Run()
+
+function! GWBASIC_NewLine()
+  let lnum = line('.')
+  let line_text = getline(lnum)
+  let nextnum = 10
+  if line_text =~ '^\d\+'
+    let current = str2nr(matchstr(line_text, '^\d\+'))
+    let nextnum = current + 10
   endif
+  call append(lnum, nextnum . ' ')
+  call cursor(lnum + 1, strlen(nextnum . ' ') + 1)
+  startinsert
 endfunction
 
-function! GWBASIC_Renumber(...) range
-  let l:step = a:0 > 0 ? str2nr(a:1) : 10
-  let l:lnum = 10
-  let l:new_lines = []
-  let l:labels = {}
-  let l:label_references = []
-
-  for l:line in getline(1, '$')
-    if l:line =~ '^\s*\(\d\+\)\s\+@\(\w\+\)'
-      let l:label = matchstr(l:line, '@\w\+')
-      let l:labels[l:label] = l:lnum
-      let l:line = substitute(l:line, '@\w\+', '', '')
-    endif
-    if l:line =~ '^\s*\(\d\+\)'
-      call add(l:new_lines, printf('%d %s', l:lnum, substitute(l:line, '^\s*\d\+\s*', '', '')))
-      let l:lnum += l:step
-    else
-      call add(l:new_lines, l:line)
+function! GWBASIC_CollectLabels(lines)
+  let labels = {}
+  let duplicates = []
+  for i in range(len(a:lines))
+    let line = a:lines[i]
+    if line =~ '^@\w\+'
+      let label = matchstr(line, '^@\zs\w\+')
+      if has_key(labels, label)
+        call add(duplicates, label)
+      else
+        let j = i + 1
+        while j < len(a:lines) && a:lines[j] !~ '^\d\+'
+          let j += 1
+        endwhile
+        if j < len(a:lines)
+          let target = matchstr(a:lines[j], '^\d\+')
+          let labels[label] = target
+        endif
+      endif
     endif
   endfor
-
-  call setline(1, map(l:new_lines, 'GWBASIC_UppercaseKeywords(v:val)'))
-  echo "Zeilen neu nummeriert mit Labelauflösung"
+  if !empty(duplicates)
+    echohl WarningMsg
+    echo 'WARNUNG: doppelte Labels gefunden: ' . join(duplicates, ', ')
+    echohl None
+  endif
+  return labels
 endfunction
 
-function! GWBASIC_Run()
-  if !executable('pcbasic')
-    echoerr "pcbasic nicht installiert oder nicht im PATH"
-    return
+function! GWBASIC_ReplaceLabels(lines, labels)
+  let replaced = []
+  let undefined = []
+  for line in a:lines
+    if line =~ '^@\w\+'
+      continue
+    endif
+    let original = line
+    while match(line, '@\w\+') >= 0
+      let ref = matchstr(line, '@\w\+')
+      let name = strpart(ref, 1)
+      if has_key(a:labels, name)
+        let line = substitute(line, '@' . name, a:labels[name], '')
+      else
+        if index(undefined, name) == -1
+          call add(undefined, name)
+        endif
+        break
+      endif
+    endwhile
+    call add(replaced, line)
+  endfor
+  if !empty(undefined)
+    echohl WarningMsg
+    echo 'WARNUNG: undefinierte Labels verwendet: ' . join(undefined, ', ')
+    echohl None
   endif
-  write
-  call GWBASIC_ResolveLabels()
-  let l:newfile = expand('%:p:r') . '_expanded.bas'
-  silent execute '!pcbasic ' . shellescape(l:newfile)
+  return replaced
+endfunction
+
+function! GWBASIC_UppercaseKeywords(lines)
+  let keywords = ['PRINT', 'INPUT', 'IF', 'THEN', 'ELSE', 'FOR', 'NEXT', 'GOTO', 'GOSUB', 'RETURN', 'END', 'REM', 'DIM', 'READ', 'DATA', 'RESTORE', 'LET', 'ON', 'STOP', 'CLS']
+  let uppered = []
+  for line in a:lines
+    let newline = line
+    for word in keywords
+      let pattern = '\C\<'.tolower(word).'\>'
+      let newline = substitute(newline, pattern, word, 'g')
+    endfor
+    call add(uppered, newline)
+  endfor
+  return uppered
 endfunction
 
 function! GWBASIC_ResolveLabels()
-  let l:lines = getline(1, '$')
-  let l:labels = {}
-  let l:resolved = []
+  let lines = getline(1, '$')
+  let labels = GWBASIC_CollectLabels(lines)
+  let resolved = GWBASIC_ReplaceLabels(lines, labels)
+  let resolved = GWBASIC_UppercaseKeywords(resolved)
+  let outname = expand('%:p:r') . '_expanded.bas'
+  call writefile(resolved, outname)
+  echo 'Labels aufgelöst → ' . outname
+endfunction
 
-  for idx in range(len(l:lines))
-    let l:line = l:lines[idx]
-    if l:line =~ '^\s*\(\d\+\)\s\+@\(\w\+\)'
-      let l:label = matchstr(l:line, '@\w\+')
-      let l:num = matchstr(l:line, '^\s*\d\+')
-      let l:labels[l:label] = l:num
+function! GWBASIC_Renumber(...)
+  let step = a:0 > 0 ? str2nr(a:1) : 10
+  let lines = getline(1, '$')
+  let newlines = []
+  let counter = 10
+  for line in lines
+    if line =~ '^\d\+ '
+      let code = substitute(line, '^\d\+ ', '', '')
+      call add(newlines, counter . ' ' . code)
+      let counter += step
+    elseif line =~ '^@\w\+'
+      call add(newlines, line)
+    else
+      call add(newlines, line)
     endif
   endfor
-
-  for l:line in l:lines
-    for [label, num] in items(l:labels)
-      let l:line = substitute(l:line, label, num, 'g')
-    endfor
-    call add(l:resolved, GWBASIC_UppercaseKeywords(l:line))
-  endfor
-
-  let l:newfile = expand('%:p:r') . '_expanded.bas'
-  call writefile(l:resolved, l:newfile)
-  echo "Labels aufgelöst → " . l:newfile
+  let labels = GWBASIC_CollectLabels(newlines)
+  let final = GWBASIC_ReplaceLabels(newlines, labels)
+  let final = GWBASIC_UppercaseKeywords(final)
+  call setline(1, final)
+  echo 'Renumber abgeschlossen.'
 endfunction
 
-function! GWBASIC_UppercaseKeywords(line)
-  let l:keywords = split("PRINT INPUT IF THEN ELSE GOTO GOSUB RETURN FOR TO STEP NEXT WHILE WEND DO LOOP END DIM DATA READ RESTORE DEF FN LET REM CLS STOP ON ERROR RESUME CHAIN CLEAR CLOSE COMMON CONT LPRINT LOCATE POKE PEEK OUT SOUND PLAY RANDOMIZE RUN SYSTEM ABS ASC ATN CHR$ COS EXP FIX INT INSTR LEFT$ LEN LOG MID$ RIGHT$ RND SGN SIN SQR STR$ STRING$ TAN VAL SPACE$ TIME$ DATE$ INKEY$ FRE EOF LOC LOF TIMER CINT CSNG CDBL")
-  let l:line = a:line
-  for l:kw in l:keywords
-    let l:pattern = '\C\<' . tolower(l:kw) . '\>'
-    let l:line = substitute(l:line, l:pattern, l:kw, 'g')
-  endfor
-  return l:line
+function! GWBASIC_Run()
+  let lines = getline(1, '$')
+  let labels = GWBASIC_CollectLabels(lines)
+  let resolved = GWBASIC_ReplaceLabels(lines, labels)
+  let resolved = GWBASIC_UppercaseKeywords(resolved)
+  let outname = expand('%:p:r') . '_expanded.bas'
+  call writefile(resolved, outname)
+  if executable('pcbasic')
+    call system('pcbasic ' . shellescape(outname) . ' &')
+    echo 'Starte mit pcbasic: ' . outname
+  else
+    echo 'Fehler: pcbasic nicht im $PATH gefunden.'
+  endif
 endfunction
+
