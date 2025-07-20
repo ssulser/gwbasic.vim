@@ -14,22 +14,37 @@ autocmd FileType gwbasic inoremap <buffer> <C-j> <C-o>:call GWBASIC_EmptyLine()<
 " Ausführen mit <C-r>
 autocmd FileType gwbasic nnoremap <buffer> <C-r> :call GWBASIC_Run()<CR>
 
+" Verstecke Markerzeilen <<<GWBASIC_EMPTY>>> durch Conceal
+augroup gwbasic_syntax
+  autocmd!
+  autocmd FileType gwbasic syntax match gwbasicEmpty /^<<<GWBASIC_EMPTY>>>$/ conceal
+  autocmd FileType gwbasic setlocal conceallevel=2
+augroup END
+
 command! -nargs=? Renumber call GWBASIC_Renumber(<f-args>)
 command! ResolveLabels call GWBASIC_ResolveLabels()
 command! Run call GWBASIC_Run()
 
 function! GWBASIC_EmptyLine()
-  let lnum = line('.')
-  call append(lnum, "")
-  call append(lnum + 1, "\n")
-  call cursor(lnum + 2, 1)
+  " Füge Markerzeile ein, die beim Schreiben als 0D 0A (ohne Inhalt) ausgegeben wird
+  call append(line('.'), '<<<GWBASIC_EMPTY>>>')
+  call cursor(line('.') + 1, 1)
   startinsert
 endfunction
 
 function! GWBASIC_WriteWithEOF(lines, filename)
-  let final = copy(a:lines)
-  call add(final, "\x1A")
-  call writefile(final, a:filename, 'b')
+  let bin = []
+  for line in a:lines
+    if line ==# '<<<GWBASIC_EMPTY>>>'
+      call add(bin, "
+") " GW-BASIC interpretiert diese Umkehrung als leere logische Zeile
+    else
+      call add(bin, line . "
+") " normale Zeilen bekommen CRLF später automatisch
+    endif
+  endfor
+  call add(bin, "\x1A")
+  call writefile(bin, a:filename, 'b')
 endfunction
 
 function! GWBASIC_NewLine()
@@ -118,16 +133,6 @@ function! GWBASIC_UppercaseKeywords(lines)
   return uppered
 endfunction
 
-function! GWBASIC_ResolveLabels()
-  let lines = getline(1, '$')
-  let labels = GWBASIC_CollectLabels(lines)
-  let resolved = GWBASIC_ReplaceLabels(lines, labels)
-  let resolved = GWBASIC_UppercaseKeywords(resolved)
-  let outname = expand('%:p:r') . '_expanded.bas'
-  call GWBASIC_WriteWithEOF(resolved, outname)
-  echo 'Labels aufgelöst → ' . outname
-endfunction
-
 function! GWBASIC_Renumber(...)
   let step = a:0 > 0 ? str2nr(a:1) : 10
   let lines = getline(1, '$')
@@ -151,6 +156,16 @@ function! GWBASIC_Renumber(...)
   echo 'Renumber abgeschlossen.'
 endfunction
 
+function! GWBASIC_ResolveLabels()
+  let lines = getline(1, '$')
+  let labels = GWBASIC_CollectLabels(lines)
+  let resolved = GWBASIC_ReplaceLabels(lines, labels)
+  let resolved = GWBASIC_UppercaseKeywords(resolved)
+  let outname = expand('%:p:r') . '_expanded.bas'
+  call GWBASIC_WriteWithEOF(resolved, outname)
+  echo 'Labels aufgelöst → ' . outname
+endfunction
+
 function! GWBASIC_Run()
   let lines = getline(1, '$')
   let labels = GWBASIC_CollectLabels(lines)
@@ -165,4 +180,3 @@ function! GWBASIC_Run()
     echo 'Fehler: pcbasic nicht im $PATH gefunden.'
   endif
 endfunction
-
