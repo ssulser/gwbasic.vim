@@ -36,11 +36,11 @@ function! GWBASIC_WriteWithEOF(lines, filename)
   let bin = []
   for line in a:lines
     if line ==# '<<<GWBASIC_EMPTY>>>'
-      call add(bin, "
-") " GW-BASIC interpretiert diese Umkehrung als leere logische Zeile
+      call add(bin, "")
+" GW-BASIC interpretiert diese Umkehrung als leere logische Zeile
     else
-      call add(bin, line . "
-") " normale Zeilen bekommen CRLF später automatisch
+      call add(bin, line . "")
+" normale Zeilen bekommen CRLF später automatisch
     endif
   endfor
   call add(bin, "\x1A")
