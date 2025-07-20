@@ -1,1 +1,1 @@
-" syntax placeholder (vollständige Version im echten Plugin enthalten)"
+" syntax: vollständige Syntaxdefinition (Platzhalter hier)"
