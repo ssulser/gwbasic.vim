@@ -1,6 +1,7 @@
 augroup gwbasic_plugin
   autocmd!
   autocmd FileType gwbasic call GWBASIC_Setup()
+  autocmd BufWriteCmd *.bas call GWBASIC_SaveWithLFCR() | execute 'silent! doautocmd BufWritePost' | echo 'GW-BASIC-Datei gespeichert mit CRLF und LFCR'
 augroup END
 
 function! GWBASIC_Setup()
@@ -36,8 +37,8 @@ function! GWBASIC_InsertNextLine()
 endfunction
 
 function! GWBASIC_InsertLFCR()
-  " Fügt explizit LFCR-Steuerzeichen als sichtbare Zeile ein
-  call append(line('.'), "\x0A\x0D")
+  " Markiere Zeile als spezielle LFCR-Zeile (wird später beim Speichern ersetzt)
+  call append(line('.'), '<<<LFCR>>>')
   call cursor(line('.')+1, 1)
   startinsert
 endfunction
@@ -66,6 +67,22 @@ function! GWBASIC_Renumber(...) range
 
   call setline(1, map(l:new_lines, 'GWBASIC_UppercaseKeywords(v:val)'))
   echo "Zeilen neu nummeriert mit Labelauflösung"
+endfunction
+
+function! GWBASIC_SaveWithLFCR()
+  let l:lines = getline(1, '$')
+  let l:bytes = []
+
+  for line in l:lines
+    if line ==# '<<<LFCR>>>'
+      call add(l:bytes, "\x0A\x0D")
+    else
+      call add(l:bytes, line . "\r\n")
+    endif
+  endfor
+
+  call add(l:bytes, "\x1A") " EOF
+  call writefile(l:bytes, expand('%:p'), 'b')
 endfunction
 
 function! GWBASIC_Run()
