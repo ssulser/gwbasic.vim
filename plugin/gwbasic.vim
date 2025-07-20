@@ -14,7 +14,7 @@ autocmd FileType gwbasic inoremap <buffer> <C-j> <C-o>:call GWBASIC_EmptyLine()<
 " Ausführen mit <C-r>
 autocmd FileType gwbasic nnoremap <buffer> <C-r> :call GWBASIC_Run()<CR>
 
-define command! -nargs=? Renumber call GWBASIC_Renumber(<f-args>)
+command! -nargs=? Renumber call GWBASIC_Renumber(<f-args>)
 command! ResolveLabels call GWBASIC_ResolveLabels()
 command! Run call GWBASIC_Run()
 
