@@ -1,1 +1,1 @@
-au BufRead,BufNewFile *.gwb,*.gwbasic,*.bas set filetype=gwbasic
+au BufRead,BufNewFile *.BAS,*.bas set filetype=gwbasic
