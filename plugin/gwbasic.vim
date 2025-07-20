@@ -8,8 +8,8 @@ let g:loaded_gwbasic = 1
 " Automatische Zeilennummern bei <CR>
 autocmd FileType gwbasic inoremap <buffer> <CR> <C-o>:call GWBASIC_NewLine()<CR>
 
-" Leere Zeile bei <C-j> (statt <C-CR>)
-autocmd FileType gwbasic inoremap <buffer> <C-j> <CR>
+" Leere Zeile bei <C-j> (statt <C-CR>) erzeugt GW-BASIC-kompatible 0x0A 0x0D Sequenz
+autocmd FileType gwbasic inoremap <buffer> <C-j> <C-o>:call GWBASIC_EmptyLine()<CR>
 
 " Ausführen mit <C-r>
 autocmd FileType gwbasic nnoremap <buffer> <C-r> :call GWBASIC_Run()<CR>
@@ -17,6 +17,20 @@ autocmd FileType gwbasic nnoremap <buffer> <C-r> :call GWBASIC_Run()<CR>
 define command! -nargs=? Renumber call GWBASIC_Renumber(<f-args>)
 command! ResolveLabels call GWBASIC_ResolveLabels()
 command! Run call GWBASIC_Run()
+
+function! GWBASIC_EmptyLine()
+  let lnum = line('.')
+  call append(lnum, "")
+  call append(lnum + 1, "\n")
+  call cursor(lnum + 2, 1)
+  startinsert
+endfunction
+
+function! GWBASIC_WriteWithEOF(lines, filename)
+  let final = copy(a:lines)
+  call add(final, "\x1A")
+  call writefile(final, a:filename, 'b')
+endfunction
 
 function! GWBASIC_NewLine()
   let lnum = line('.')
@@ -110,7 +124,7 @@ function! GWBASIC_ResolveLabels()
   let resolved = GWBASIC_ReplaceLabels(lines, labels)
   let resolved = GWBASIC_UppercaseKeywords(resolved)
   let outname = expand('%:p:r') . '_expanded.bas'
-  call writefile(resolved, outname)
+  call GWBASIC_WriteWithEOF(resolved, outname)
   echo 'Labels aufgelöst → ' . outname
 endfunction
 
@@ -143,7 +157,7 @@ function! GWBASIC_Run()
   let resolved = GWBASIC_ReplaceLabels(lines, labels)
   let resolved = GWBASIC_UppercaseKeywords(resolved)
   let outname = expand('%:p:r') . '_expanded.bas'
-  call writefile(resolved, outname)
+  call GWBASIC_WriteWithEOF(resolved, outname)
   if executable('pcbasic')
     call system('pcbasic ' . shellescape(outname) . ' &')
     echo 'Starte mit pcbasic: ' . outname
