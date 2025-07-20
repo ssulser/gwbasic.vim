@@ -1,34 +1,70 @@
 # gwbasic.vim
 
-Ein Vim-Plugin für GW-BASIC-Entwicklung, mit folgenden Funktionen:
+Ein Vim-Plugin zur komfortablen Arbeit mit **GW-BASIC**-Dateien.
 
-- Syntax-Highlighting für klassische GW-BASIC-Schlüsselwörter und Funktionen
-- Automatische Zeilennummerierung beim Drücken von `<Enter>`
-- `<Ctrl-Enter>` (oder `<Ctrl-J>`) fügt eine leere Zeile **ohne Zeilennummer** ein
-- Tabs werden unterdrückt, stattdessen nur Spaces verwendet
-- Befehl `:Renumber [n]` zum Neu-nummerieren aller BASIC-Zeilen (Standard: Schrittweite 10)
+![Demo](gwbasic_demo.gif)
 
-## Installation
+## ✨ Features
 
-Kopiere dieses Repository in dein Vim-Plugin-Verzeichnis:
+- Syntax-Highlighting für alle GW-BASIC-Statements und Funktionen
+- Automatische Zeilennummerierung bei `<Enter>`
+- Einfügen leerer Zeilen mit `<Ctrl-Enter>`
+- Unterstützung von **Labels** (z. B. `@weiter`) für `GOTO`, `GOSUB` etc.
+- Befehle wie `:Renumber`, `:ResolveLabels`, `:Run`
+- Automatische Großschreibung aller BASIC-Befehle beim Ausführen
+- Direkte Ausführung mit [`pcbasic`](https://github.com/robhagemans/pcbasic)
 
-```sh
-git clone https://github.com/dein-benutzername/gwbasic.vim ~/.vim/pack/plugins/start/gwbasic.vim
+## 🔧 Installation (mit [vim-plug](https://github.com/junegunn/vim-plug))
+
+```vim
+Plug 'ssulser/gwbasic.vim'
 ```
 
-Oder als manuelle Installation:
+Dann in Vim:
 
-```sh
-mkdir -p ~/.vim/{syntax,plugin,ftdetect}
-cp syntax/gwbasic.vim ~/.vim/syntax/
-cp plugin/gwbasic.vim ~/.vim/plugin/
-cp ftdetect/gwbasic.vim ~/.vim/ftdetect/
+```vim
+:PlugInstall
 ```
 
-## Nutzung
+## 🚀 Befehle
 
-Einfach eine `.bas`, `.gwb`, oder `.gwbasic` Datei öffnen. Alles Weitere geschieht automatisch.
+| Befehl            | Funktion                                           |
+|-------------------|----------------------------------------------------|
+| `<Enter>`         | neue Zeile mit nächster BASIC-Zeilennummer         |
+| `<Ctrl-Enter>`    | neue Zeile **ohne** Nummer (z. B. für Strukturblöcke) |
+| `<Ctrl-r>`        | führt Datei mit `:Run` aus                         |
+| `:Renumber`       | nummeriert alle Zeilen neu, Labels werden ersetzt |
+| `:ResolveLabels`  | ersetzt Labels in Kopie (`_expanded.bas`)         |
+| `:Run`            | speichert Datei, ersetzt Labels, startet `pcbasic` |
 
-## Lizenz
+## 🧪 Beispiel (demo.bas)
 
-MIT
+```basic
+10 INPUT A
+20 IF A = 1 THEN GOTO @weiter
+30 PRINT "falsch"
+40 END
+@weiter
+50 PRINT "richtig"
+60 END
+```
+
+Nach `:Run` wird daraus automatisch:
+
+```basic
+10 INPUT A
+20 IF A = 1 THEN GOTO 50
+30 PRINT "falsch"
+40 END
+50 PRINT "richtig"
+60 END
+```
+
+## 📦 Voraussetzungen
+
+- Vim ≥ 8 oder Neovim
+- [`pcbasic`](https://github.com/robhagemans/pcbasic) im `$PATH` (z. B. via `pip install pcbasic`)
+
+## 📃 Lizenz
+
+MIT-Lizenz © 2025 ssulser
