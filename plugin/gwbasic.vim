@@ -37,7 +37,7 @@ endfunction
 
 function! GWBASIC_InsertLFCR()
   " Fügt explizit LFCR-Steuerzeichen als sichtbare Zeile ein
-  call append(line('.'), "\n\r")
+  call append(line('.'), "\x0A\x0D")
   call cursor(line('.')+1, 1)
   startinsert
 endfunction
