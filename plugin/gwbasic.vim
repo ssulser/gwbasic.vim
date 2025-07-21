@@ -18,7 +18,6 @@ function! GWBASIC_Setup()
 
   command! -nargs=? Renumber call GWBASIC_Renumber(<f-args>)
   command! Run call GWBASIC_Run()
-  command! ResolveLabels call GWBASIC_ResolveLabels()
 endfunction
 
 function! GWBASIC_InsertNextLine()
@@ -47,16 +46,8 @@ function! GWBASIC_Renumber(...) range
   let l:step = a:0 > 0 ? str2nr(a:1) : 10
   let l:lnum = 10
   let l:new_lines = []
-  let l:labels = {}
-  let l:label_references = []
 
   for l:line in getline(1, '$')
-    if l:line =~ '^\s*\(\d\+\)\s\+@\(\w\+\)'
-      let l:label = matchstr(l:line, '@\w\+')
-      let l:labels[l:label] = l:lnum
-      let l:line = substitute(l:line, '@\w\+', '', '')
-      let l:line .= " : REM " . l:label
-    endif
     if l:line =~ '^\s*\(\d\+\)'
       call add(l:new_lines, printf('%d %s', l:lnum, substitute(l:line, '^\s*\d\+\s*', '', '')))
       let l:lnum += l:step
@@ -66,7 +57,7 @@ function! GWBASIC_Renumber(...) range
   endfor
 
   call setline(1, map(l:new_lines, 'GWBASIC_UppercaseKeywords(v:val)'))
-  echo "Zeilen neu nummeriert mit Labelauflösung"
+  echo "Zeilen neu nummeriert"
 endfunction
 
 function! GWBASIC_SaveWithLFCR()
@@ -91,33 +82,7 @@ function! GWBASIC_Run()
     return
   endif
   write
-  call GWBASIC_ResolveLabels()
   silent execute '!pcbasic ' . shellescape(expand('%'))
-endfunction
-
-function! GWBASIC_ResolveLabels()
-  let l:lines = getline(1, '$')
-  let l:labels = {}
-  let l:resolved = []
-
-  for idx in range(len(l:lines))
-    let l:line = l:lines[idx]
-    if l:line =~ '^\s*\(\d\+\)\s\+@\(\w\+)'
-      let l:label = matchstr(l:line, '@\w\+')
-      let l:num = matchstr(l:line, '^\s*\d\+')
-      let l:labels[l:label] = l:num
-    endif
-  endfor
-
-  for l:line in l:lines
-    for [label, num] in items(l:labels)
-      let l:line = substitute(l:line, label, num, 'g')
-    endfor
-    call add(l:resolved, GWBASIC_UppercaseKeywords(l:line))
-  endfor
-
-  call setline(1, l:resolved)
-  echo "Labels ersetzt im Buffer"
 endfunction
 
 function! GWBASIC_UppercaseKeywords(line)
