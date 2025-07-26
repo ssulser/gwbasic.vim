@@ -1,96 +1,69 @@
 # gwbasic.vim
 
-Ein Vim-Plugin zur komfortablen Arbeit mit **GW-BASIC**-Quelltexten – inklusive Syntaxhighlighting, automatischer Zeilennummerierung, Label-Unterstützung und Direktstart mit `pcbasic`.
+Ein minimalistisches Vim-Plugin für das Schreiben, Bearbeiten und Ausführen von GW-BASIC Programmen unter Linux, macOS oder Windows – ideal in Kombination mit [`pcbasic`](https://github.com/robhagemans/pcbasic).
 
-![Demo: Zeilennummern, Labels, :Run](gwbasic_demo.gif)
+## 🔧 Features
 
----
+- Syntax-Hervorhebung für GW-BASIC Befehle, Funktionen und Statements
+- Automatische Zeilennummerierung im 10er-Schritt nach [Return]
+- Einfügen nicht-nummerierter Zwischenzeilen mit [Ctrl-J] (LFCR)
+- Erzwingt ausschließlich Leerzeichen (Tabs werden zu Spaces)
+- Automatisches Speichern im GW-BASIC ASCII-Format:
+  - CRLF (`\r\n`) nach jeder normalen Zeile
+  - LFCR (`\n\r`) für `Ctrl-J`-Zeilen
+  - Abschließendes EOF-Zeichen `0x1A`
+- Automatische Großschreibung aller GW-BASIC Befehle
+- Integration mit `pcbasic` zum direkten Ausführen
 
-## ✨ Funktionen
-
-- ✅ Syntax-Highlighting für **alle** GW-BASIC-Befehle, Funktionen und Systemvariablen
-- ✅ Automatische Zeilennummerierung beim Drücken von `<Enter>`
-- ✅ Leere Zwischenzeilen mit `<Ctrl-Enter>` oder `<Ctrl-j>` (ohne Nummer)
-- ✅ Unterstützung von Labels (z. B. `@weiter`) für GOTO/GOSUB
-- ✅ Automatische Umwandlung aller Befehle in GROSSBUCHSTABEN bei Ausführung
-- ✅ `:Run` – aktuelle Datei speichern, Labels ersetzen, und mit `pcbasic` starten
-- ✅ `:Renumber` – BASIC-Zeilen neu nummerieren, Labels ersetzen
-- ✅ `:ResolveLabels` – erzeugt Datei mit aufgelösten Labels (`*_expanded.bas`)
-- ✅ `<Ctrl-r>` – Tastenkürzel für `:Run`
-
----
-
-## 🔧 Installation (mit [vim-plug](https://github.com/junegunn/vim-plug))
-
-Füge dies in deine `~/.vimrc` ein:
+## ⚙️ Installation mit vim-plug
 
 ```vim
-call plug#begin('~/.vim/plugged')
-
 Plug 'ssulser/gwbasic.vim'
-
-call plug#end()
 ```
 
 Dann in Vim:
 
 ```vim
+:source %
 :PlugInstall
 ```
 
----
+## ⌨️ Tastenkombinationen
 
-## 💻 Beispiel: `demo.bas`
+| Tastenkombination | Beschreibung                                  |
+|-------------------|-----------------------------------------------|
+| `[Return]`        | Neue nummerierte Zeile mit +10                |
+| `[Ctrl-J]`        | Fügt LFCR-Trenner (z. B. für Kommentare) ein  |
+| `[Ctrl-Return]`   | Normales Verhalten (keine Sonderaktion)       |
+| `[Ctrl-R]`        | Führt das aktuelle Programm mit `pcbasic` aus |
+
+## 📦 Befehle
+
+| Befehl            | Funktion                                      |
+|-------------------|-----------------------------------------------|
+| `:Renumber`       | Neu nummerieren (Standard: Schrittweite 10)   |
+| `:Run`            | Speichern und ausführen mit `pcbasic`         |
+
+## 📁 Dateiformat beim Speichern
+
+Dieses Plugin ersetzt das `:w` Kommando durch eine eigene Speicherfunktion, die die Datei im klassischen GW-BASIC ASCII-Format speichert:
+
+- **Normale Zeilen** → `CRLF` (0x0D 0x0A)
+- **Spezialzeilen (Ctrl-J)** → `LFCR` (0x0A 0x0D)
+- **EOF** → `0x1A`
+
+## 🧪 Beispiel
 
 ```basic
-10 INPUT A
-20 IF A = 1 THEN GOTO @weiter
-30 PRINT "falsch"
-40 END
-@weiter
-50 PRINT "richtig"
-60 END
+10 PRINT "HELLO WORLD"
+20 GOTO 10
 ```
 
-Nach `:Run` wird automatisch eine Kopie erstellt:
+## 💡 Voraussetzungen
 
-```basic
-10 INPUT A
-20 IF A = 1 THEN GOTO 50
-30 PRINT "falsch"
-40 END
-50 PRINT "richtig"
-60 END
-```
+- [pcbasic](https://github.com/robhagemans/pcbasic) im Systempfad (`$PATH`)
+- Vim oder Neovim
 
----
+## 📜 Lizenz
 
-## 🔑 Kommandos
-
-| Befehl            | Funktion                                                                 |
-|-------------------|--------------------------------------------------------------------------|
-| `<Enter>`         | neue BASIC-Zeile mit automatisch fortlaufender Nummer                   |
-| `<Ctrl-Enter>`    | neue Zeile **ohne Nummer** (z. B. für mehrzeilige Strukturen)           |
-| `<Ctrl-r>`        | ruft `:Run` auf – Datei speichern & mit `pcbasic` starten                |
-| `:Run`            | speichert Datei, ersetzt Labels in Kopie und startet `pcbasic`          |
-| `:Renumber [n]`   | ersetzt alle Zeilennummern mit Schrittweite `n` (Standard: 10)           |
-| `:ResolveLabels`  | ersetzt Labels in Datei → `*_expanded.bas` im selben Verzeichnis        |
-
----
-
-## ⚠️ Voraussetzung
-
-- [`pcbasic`](https://github.com/robhagemans/pcbasic), z. B. per:
-
-```sh
-pip install pcbasic
-```
-
-- Vim ≥ 8 oder Neovim
-- Empfohlen: monospaced Schriftart (z. B. DejaVu Sans Mono)
-
----
-
-## 📃 Lizenz
-
-MIT-Lizenz © 2025 [ssulser](https://github.com/ssulser)
+MIT License – © 2025 Simon Sulser
